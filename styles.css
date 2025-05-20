@@ -1,0 +1,119 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #f0f2f5;
+    color: #333;
+}
+
+.main-title {
+    text-align: center;
+    font-size: 2.5rem;
+    color: #2c3e50;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 3px solid #3498db;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.rankings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 2rem;
+}
+
+.ranking-section {
+    background: white;
+    border-radius: 10px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.ranking-section h2 {
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    text-align: center;
+    font-size: 1.5rem;
+}
+
+.ranking-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    height: 48px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    position: absolute;
+    left: 0;
+    right: 0;
+    transition: top 2s ease-in-out, background-color 0.3s ease;
+    will-change: transform, top;
+}
+
+.ranking-list {
+    position: relative;
+    height: 560px;
+    overflow: hidden;
+}
+
+/* Webkit scrollbar styling */
+.ranking-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.ranking-list::-webkit-scrollbar-track {
+    background: #f0f2f5;
+    border-radius: 4px;
+}
+
+.ranking-list::-webkit-scrollbar-thumb {
+    background-color: #3498db;
+    border-radius: 4px;
+}
+
+.ranking-list::-webkit-scrollbar-thumb:hover {
+    background-color: #2980b9;
+}
+
+.ranking-item .rank {
+    font-weight: bold;
+    min-width: 30px;
+    color: #2c3e50;
+}
+
+.ranking-item .name {
+    flex-grow: 1;
+}
+
+.ranking-item .score {
+    font-weight: bold;
+    color: #3498db;
+}
+
+/* Animations */
+.ranking-item.moving-up {
+    background-color: #d4edda;
+    z-index: 2;
+}
+
+.ranking-item.moving-down {
+    background-color: #f8d7da;
+    z-index: 1;
+}
+
+.ranking-item-placeholder {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    pointer-events: none;
+}
