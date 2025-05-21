@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pop Show Vote</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Pop Show Voting</h1>
+        <div class="vote-section">
+            <div class="vote-category">
+                <h2>Pop King</h2>
+                <select id="kingSelect" title="Select Pop King" required>
+                    <option value="">Select Pop King</option>
+                </select>
+            </div>
+            <div class="vote-category">
+                <h2>Pop Queen</h2>
+                <select id="queenSelect" title="Placeholder" required>
+                    <option value="">Select Pop Queen</option>
+                </select>
+            </div>
+            <button id="voteBtn" class="vote-button">Submit Vote</button>
+        </div>
+        <div id="message" class="message"></div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
