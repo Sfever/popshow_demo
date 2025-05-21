@@ -53,45 +53,65 @@ populateSelect(queenSelect, candidates.queens);
 // Handle vote submission
 async function submitVote() {
     try {
-        // Disable button to prevent double submission
+        if (!kingSelect.value && !queenSelect.value) {
+            throw new Error('Please select at least one candidate');
+        }
+
+        // Prevent multiple submissions
+        if (voteBtn.disabled) {
+            return;
+        }
+
+        // Disable button immediately
         voteBtn.disabled = true;
+        
         const vote = {
             pop_king: kingSelect.value || null,
             pop_queen: queenSelect.value || null,
             device_token: generateDeviceToken()
         };
 
-        // Only send votes that have been selected
-        const response = await fetch('https://localhost:8000/vote', {
+        const response = await fetch('http://localhost:8000/vote', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json'
             },
-            body: JSON.stringify(vote)
-        }); const result = await response.json();
+            body: JSON.stringify(vote),
+            mode: 'cors', // Add CORS mode explicitly
+            cache: 'no-cache',
+            credentials: 'same-origin'
+        }).catch(error => {
+            // Handle network errors specifically
+            throw new Error('Server connection failed. Please check if the server is running.');
+        });
 
-        if (!response.ok) {
-            throw new Error(result.message || 'Vote failed');
+        if (response.status === 403) {
+            throw new Error('You have already voted');
         }
 
-        // Show success message
+        if (!response.ok) {
+            throw new Error(`Vote failed: ${response.statusText}`);
+        }
+
+        const result = await response.json();
         showMessage('Vote submitted successfully!', false);
-
-        // Mark as voted in localStorage
         localStorage.setItem('hasVoted', 'true');
-
-        // Disable the vote button
-        voteBtn.disabled = true;
-
+        
         // Reset form
         kingSelect.value = '';
         queenSelect.value = '';
     } catch (error) {
-        showMessage('Failed to submit vote. Please try again.', true);
+        showMessage(error.message, true);
+        console.error('Vote error:', error); // Add error logging
     } finally {
-        voteBtn.disabled = false;
+        // Only re-enable button if there was an error
+        if (!localStorage.getItem('hasVoted')) {
+            voteBtn.disabled = false;
+        }
     }
 }
+
 
 // Show message to user
 function showMessage(text, isError = false) {
