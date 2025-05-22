@@ -7,14 +7,15 @@ function generateMockData(count) {
     })).sort((a, b) => b.score - a.score);
 }
 
-
-
 // Store previous rankings to detect changes
 const previousRankings = {
-    rankingA: new Map(),
-    rankingB: new Map(),
-    rankingC: new Map(),
-    rankingD: new Map()
+    pop_king: new Map(),
+    pop_queen: new Map(),
+    most_spirited_dance: new Map(),
+    most_dazzling_dance: new Map(),
+    most_attractive_dance: new Map(),
+    meishi_grammy: new Map(),
+    best_band: new Map()
 };
 
 // Store positions and dimensions for smooth transitions
@@ -25,6 +26,14 @@ function getItemPosition(element) {
         top: element.offsetTop,
         height: element.offsetHeight
     };
+}
+
+function convertVotesToRankingData(votes, category) {
+    return Object.entries(votes[category] || {}).map(([name, score], index) => ({
+        id: name, // Use name as ID since it's unique
+        name: name,
+        score: score
+    }));
 }
 
 function updateRankingList(elementId, data) {
@@ -51,7 +60,7 @@ function updateRankingList(elementId, data) {
 
         if (existingItem) {
             // Update existing item
-            const prevIndex = previousRanking.get(Number(itemId));
+            const prevIndex = previousRanking.get(itemId);
             
             // Update content without removing the element
             existingItem.querySelector('.rank').textContent = `#${newIndex + 1}`;
@@ -64,7 +73,8 @@ function updateRankingList(elementId, data) {
                 existingItem.classList.remove('moving-up', 'moving-down');
                 
                 // Force reflow
-                existingItem.offsetHeight;                existingItem.style.transition = 'top 2s ease-in-out, background-color 0.3s ease';
+                existingItem.offsetHeight;
+                existingItem.style.transition = 'top 2s ease-in-out, background-color 0.3s ease';
                 existingItem.classList.add(prevIndex > newIndex ? 'moving-up' : 'moving-down');
                 existingItem.style.top = `${newTop}px`;
 
@@ -98,7 +108,7 @@ function updateRankingList(elementId, data) {
         }
         
         // Update previous ranking
-        previousRanking.set(Number(itemId), newIndex);
+        previousRanking.set(itemId, newIndex);
     });
     
     // Remove items that are no longer in the data
@@ -109,56 +119,58 @@ function updateRankingList(elementId, data) {
     });
 }
 
-// Function to update all rankings
-function updateAllRankings() {    const rankingsData = {
-        rankingA: generateMockData(20),
-        rankingB: generateMockData(20),
-        rankingC: generateMockData(20),
-        rankingD: generateMockData(20)
-    };
-
-    Object.entries(rankingsData).forEach(([elementId, data]) => {
-        updateRankingList(elementId, data);
-    });
-}
-function updateAllRankingsOnline(){
-    const rankingsDataOnline=getRankings()
-    Object.entries(rankingsDataOnline).forEach(([elementId, data]) => {
-        updateRankingList(elementId, data);
-    });
-
-}
-// Initialize rankings on load
-document.addEventListener('DOMContentLoaded', () => {
-    updateAllRankings();
-});
-
-// Update every 10 seconds
-setInterval(updateAllRankings, 10000);
-
-// In a real application, you would replace generateMockData with actual API calls
-// Example with fetch:
-/*
-async function fetchRankings() {
-    try {
-        const response = await fetch('your-api-endpoint');
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error('Error fetching rankings:', error);
-        return generateMockData(10); // Fallback to mock data
-    }
-}
-*/
 async function getRankings() {
     try {
-        const response= await fetch('http:///rankings');//http during development
+        const response = await fetch('http://localhost:8000/votes');
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
         const data = await response.json();
-        return data;
+        
+        // Transform the data into the format we need
+        return {
+            pop_king: convertVotesToRankingData(data, 'pop_king'),
+            pop_queen: convertVotesToRankingData(data, 'pop_queen'),
+            most_spirited_dance: convertVotesToRankingData(data, 'most_spirited_dance'),
+            most_dazzling_dance: convertVotesToRankingData(data, 'most_dazzling_dance'),
+            most_attractive_dance: convertVotesToRankingData(data, 'most_attractive_dance'),
+            meishi_grammy: convertVotesToRankingData(data, 'meishi_grammy'),
+            best_band: convertVotesToRankingData(data, 'best_band')
+        };
     } catch (error) {
-        throw new Error('Error fetching rankings:', error);
+        console.error('Error fetching rankings:', error);
+        // Fallback to mock data in case of error
+        return {
+            pop_king: generateMockData(5),
+            pop_queen: generateMockData(5),
+            most_spirited_dance: generateMockData(5),
+            most_dazzling_dance: generateMockData(5),
+            most_attractive_dance: generateMockData(5),
+            meishi_grammy: generateMockData(5),
+            best_band: generateMockData(5)
+        };
     }
 }
+
+// Function to update all rankings with online data
+async function updateAllRankingsOnline() {
+    try {
+        const rankingsData = await getRankings();
+        Object.entries(rankingsData).forEach(([elementId, data]) => {
+            updateRankingList(elementId, data);
+        });
+    } catch (error) {
+        console.error('Failed to update rankings:', error);
+    }
+}
+
+// Initialize rankings and start updates
+document.addEventListener('DOMContentLoaded', () => {
+    // Start with mock data while loading real data
+    updateAllRankings();
+    // Then immediately try to get real data
+    updateAllRankingsOnline();
+});
+
+// Update every 5 seconds
+setInterval(updateAllRankingsOnline, 5000);
