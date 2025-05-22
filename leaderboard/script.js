@@ -121,7 +121,13 @@ function updateAllRankings() {    const rankingsData = {
         updateRankingList(elementId, data);
     });
 }
+function updateAllRankingsOnline(){
+    const rankingsDataOnline=getRankings()
+    Object.entries(rankingsDataOnline).forEach(([elementId, data]) => {
+        updateRankingList(elementId, data);
+    });
 
+}
 // Initialize rankings on load
 document.addEventListener('DOMContentLoaded', () => {
     updateAllRankings();
@@ -144,3 +150,15 @@ async function fetchRankings() {
     }
 }
 */
+async function getRankings() {
+    try {
+        const response= await fetch('http:///rankings');//http during development
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        throw new Error('Error fetching rankings:', error);
+    }
+}

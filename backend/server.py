@@ -5,7 +5,9 @@ import rich.console
 import threading
 import ssl
 import http.cookies
-
+import time
+import sys
+import signal
 #Some other votes here
 # Create a console object
 dict_lock = threading.Lock()#this lock causes the server to stop like fucking 2 minutes before it responds to ctrl-c
@@ -76,10 +78,28 @@ console = rich.console.Console()
 class VoteDatabaseWorker():
     global dict_lock
     def __init__(self):
+        '''
+        Returned voting data:
+        {
+            "pop_king": {
+                "name": int type, number of votes
+                "another_name": int type, number of votes
+            }
+            "pop_queen": {
+                "name": int type, number of votes
+                "another_name": int type, number of votes
+            }
+            "other_votes": {
+                "
+            }
+        }
+        '''
         self.pop_king = {}
         self.pop_queen = {}
+        # Some Other votes here
         self.vote_read = False
         self.voted_devices = set()  # Store voted devices
+        self.running = True  # Add this flag
 
     def check_if_voted(self, ip_address, device_token):
         vote_id = f"{ip_address}_{device_token}"
@@ -90,13 +110,22 @@ class VoteDatabaseWorker():
         self.voted_devices.add(vote_id)
 
     def modify_vote(self, pop_king_vote=None, pop_queen_vote=None, ip_address=None, device_token=None, bypass=False):
+        if not self.running:
+            return False
+        
         with dict_lock:
-            while self.vote_read:
-                pass
+            timeout = 5  # 5 seconds timeout
+            while self.vote_read and timeout > 0 and self.running:
+                time.sleep(0.1)
+                timeout -= 0.1
+                
+            if timeout <= 0 or not self.running:
+                return False
             
             # Check if this device has already voted
-            if self.check_if_voted(ip_address, device_token) and not bypass:
-                return False
+            if not bypass:
+                if self.check_if_voted(ip_address, device_token) :
+                    return False
 
             if pop_king_vote:
                 if pop_king_vote in self.pop_king:
@@ -119,6 +148,8 @@ class VoteDatabaseWorker():
             value={"pop_king":self.pop_king,"pop_queen":self.pop_queen}
             self.vote_read = False
             return value
+    def shutdown(self):
+        self.running = False
 
 database=VoteDatabaseWorker()
 class VoteDataServer(http.server.BaseHTTPRequestHandler):
@@ -249,6 +280,16 @@ if __name__ == '__main__':
     server_address = ('', 8000)
     httpd = http.server.HTTPServer(server_address, VoteDataServer)
     ssl_context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    def shutdown_handler(signum, frame):
+        console.log("[yellow]Shutting down server...[/yellow]")
+        database.shutdown()  # Signal threads to stop
+        httpd.shutdown()     # Stop the server
+        httpd.server_close() # Close the socket
+        console.log("[red]Server stopped.[/red]")
+        sys.exit(0)
+
+    # Register the signal handler
+    signal.signal(signal.SIGINT, shutdown_handler)
     try:
         ssl_context.load_cert_chain(certfile='cert.pem', keyfile='key.pem')
         httpd.socket = ssl_context.wrap_socket(httpd.socket, server_side=True)
@@ -263,6 +304,8 @@ if __name__ == '__main__':
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
-        httpd.server_close()
-        console.log("Server stopped.")
+        shutdown_handler(None, None)
+    except Exception as e:
+        # Make sure to not quit without explict quit commad
+        console.print_exception()
         
