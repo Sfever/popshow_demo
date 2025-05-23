@@ -1,6 +1,44 @@
 // Cache DOM elements
-const kingSelect = document.getElementById('kingSelect');
-const queenSelect = document.getElementById('queenSelect');
+// Remove hard-coded select references
+// const kingSelect = document.getElementById('kingSelect');
+// const queenSelect = document.getElementById('queenSelect');
+// const voteBtn = document.getElementById('voteBtn');
+// const messageDiv = document.getElementById('message');
+
+// Define voting categories and their options
+async function fetchCandidates() {
+    try {
+        const response = await fetch('http://localhost:8000/candidates', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            mode: 'cors',
+            cache: 'no-cache',
+            credentials: 'same-origin'
+        });
+
+        if (!response.ok) throw new Error(`Failed to fetch candidates: ${response.statusText}`);
+        return await response.json();
+    }
+    catch (error) {
+        const categories = {
+            pop_king: ['Candidate 1', 'Candidate 2', 'Candidate 3', 'Candidate 4'],
+            pop_queen: ['Candidate A', 'Candidate B', 'Candidate C', 'Candidate D'],
+            most_spirited_dance: ['Dance 1', 'Dance 2', 'Dance 3'],
+            most_dazzling_dance: ['Dance 4', 'Dance 5', 'Dance 6'],
+            most_attractive_dance: ['Dance 7', 'Dance 8', 'Dance 9'],
+            meishi_grammy: ['Artist X', 'Artist Y'],
+            best_band: ['Band Alpha', 'Band Beta']
+        };
+        return categories;
+    }
+}
+const categories = await fetchCandidates();
+
+
+// Cache common elements
 const voteBtn = document.getElementById('voteBtn');
 const messageDiv = document.getElementById('message');
 
@@ -30,12 +68,6 @@ function generateDeviceToken() {
     return token;
 }
 
-// Sample candidates - in a real app, these could be fetched from server
-const candidates = {
-    kings: ['Candidate 1', 'Candidate 2', 'Candidate 3', 'Candidate 4'],
-    queens: ['Candidate A', 'Candidate B', 'Candidate C', 'Candidate D']
-};
-
 // Populate select options
 function populateSelect(select, options) {
     options.forEach(option => {
@@ -46,30 +78,35 @@ function populateSelect(select, options) {
     });
 }
 
-// Initialize selects
-populateSelect(kingSelect, candidates.kings);
-populateSelect(queenSelect, candidates.queens);
+// Populate each select dynamically
+Object.entries(categories).forEach(([category, options]) => {
+    const select = document.getElementById(`${category}_select`);
+    if (!select) return;
+    populateSelect(select, options);
+});
 
 // Handle vote submission
 async function submitVote() {
     try {
-        if (!kingSelect.value && !queenSelect.value) {
-            throw new Error('Please select at least one candidate');
+        // Ensure at least one category has a selection
+        const hasSelection = Object.keys(categories).some(cat => {
+            const val = document.getElementById(`${cat}_select`).value;
+            return val;
+        });
+        if (!hasSelection) {
+            throw new Error('Please select at least one option');
         }
 
-        // Prevent multiple submissions
-        if (voteBtn.disabled) {
-            return;
-        }
-
-        // Disable button immediately
+        if (voteBtn.disabled) return;
         voteBtn.disabled = true;
-        
-        const vote = {
-            pop_king: kingSelect.value || null,
-            pop_queen: queenSelect.value || null,
-            device_token: generateDeviceToken()
-        };
+
+        // Build vote payload
+        const vote = {};
+        Object.keys(categories).forEach(cat => {
+            const val = document.getElementById(`${cat}_select`).value;
+            vote[cat] = val || null;
+        });
+        vote.device_token = generateDeviceToken();
 
         const response = await fetch('http://localhost:8000/vote', {
             method: 'POST',
@@ -78,40 +115,27 @@ async function submitVote() {
                 'Accept': 'application/json'
             },
             body: JSON.stringify(vote),
-            mode: 'cors', // Add CORS mode explicitly
+            mode: 'cors',
             cache: 'no-cache',
             credentials: 'same-origin'
-        }).catch(error => {
-            // Handle network errors specifically
-            throw new Error('Server connection failed. Please check if the server is running.');
         });
 
-        if (response.status === 403) {
-            throw new Error('You have already voted');
-        }
+        if (response.status === 403) throw new Error('You have already voted');
+        if (!response.ok) throw new Error(`Vote failed: ${response.statusText}`);
 
-        if (!response.ok) {
-            throw new Error(`Vote failed: ${response.statusText}`);
-        }
-
-        const result = await response.json();
+        await response.json();
         showMessage('Vote submitted successfully!', false);
         localStorage.setItem('hasVoted', 'true');
-        
-        // Reset form
-        kingSelect.value = '';
-        queenSelect.value = '';
+
+        // Reset all selects
+        Object.keys(categories).forEach(cat => document.getElementById(`${cat}_select`).value = '');
     } catch (error) {
         showMessage(error.message, true);
-        console.error('Vote error:', error); // Add error logging
+        console.error('Vote error:', error);
     } finally {
-        // Only re-enable button if there was an error
-        if (!localStorage.getItem('hasVoted')) {
-            voteBtn.disabled = false;
-        }
+        if (!localStorage.getItem('hasVoted')) voteBtn.disabled = false;
     }
 }
-
 
 // Show message to user
 function showMessage(text, isError = false) {

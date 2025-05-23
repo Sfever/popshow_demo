@@ -20,12 +20,21 @@ class VoteDatabaseWorker():
         self.most_attractive_dance = {}
         self.meishi_grammy = {}
         self.best_band = {}
+        self.pop_king_candidates = {}
+        self.pop_queen_candidates = {}
+        self.most_spirited_dance_candidates = {}
+        self.most_dazzling_dance_candidates = {}
+        self.most_attractive_dance_candidates = {}
+        self.meishi_grammy_candidates = {}
+        self.best_band_candidates = {}
         self.voted_devices = set()
         self.running = True
         self.lock = threading.Lock()
         self.data_dir = os.path.dirname(os.path.abspath(__file__))
         self.data_file = os.path.join(self.data_dir, "vote_data.json")
+        self.candidates_file = os.path.join(self.data_dir, "candidates.json")
         self._load_data()
+        self.test_mode=True
 
     def _load_data(self):
         try:
@@ -45,8 +54,26 @@ class VoteDatabaseWorker():
                 console.log(f"[yellow]No existing vote data found at {self.data_file}[/yellow]")
         except Exception as e:
             console.log(f"[yellow]Could not load vote data: {e}[/yellow]")
+        try:
+            if os.path.exists(self.candidates_file):
+                with open(self.candidates_file, 'r') as f:
+                    candidates = json.load(f)
+                    self.pop_king_candidates = candidates.get('pop_king', {})
+                    self.pop_queen_candidates = candidates.get('pop_queen', {})
+                    self.most_spirited_dance_candidates = candidates.get('most_spirited_dance', {})
+                    self.most_dazzling_dance_candidates = candidates.get('most_dazzling_dance', {})
+                    self.most_attractive_dance_candidates = candidates.get('most_attractive_dance', {})
+                    self.meishi_grammy_candidates = candidates.get('meishi_grammy', {})
+                    self.best_band_candidates = candidates.get('best_band', {})
+                    console.log(f"[green]Candidates data loaded from {self.candidates_file}[/green]")
+            else:
+                console.log(f"[yellow]No existing candidates data found at {self.candidates_file}[/yellow]")
+        except Exception as e:
+            console.log(f"[yellow]Could not load candidates data: {e}[/yellow]")
 
     def _save_data(self):
+        if self.test_mode:
+            return#bypass the save for testing
         try:
             # Write data to a temporary file first
             temp_file = self.data_file + '.tmp'
@@ -147,6 +174,17 @@ class VoteDatabaseWorker():
         self._save_data()  # Save data before shutdown
         console.log("[green]Database worker shutdown complete[/green]")
 
+    def read_candidates(self):
+        return {
+            "pop_king": self.pop_king_candidates.copy(),
+            "pop_queen": self.pop_queen_candidates.copy(),
+            "most_spirited_dance": self.most_spirited_dance_candidates.copy(),
+            "most_dazzling_dance": self.most_dazzling_dance_candidates.copy(),
+            "most_attractive_dance": self.most_attractive_dance_candidates.copy(),
+            "meishi_grammy": self.meishi_grammy_candidates.copy(),
+            "best_band": self.best_band_candidates.copy()
+        }
+
 class VotingServer(HTTPServer):
     def __init__(self, server_address, handler_class):
         super().__init__(server_address, handler_class)
@@ -230,6 +268,11 @@ class VoteHandler(BaseHTTPRequestHandler):
             success = self.server.vote_db.modify_vote(
                 data.get('pop_king'), 
                 data.get('pop_queen'),
+                data.get('most_spirited_dance'),
+                data.get('most_dazzling_dance'),
+                data.get('most_attractive_dance'),
+                data.get('meishi_grammy'),
+                data.get('best_band'),
                 self.client_address[0],
                 device_token
             )
@@ -258,6 +301,13 @@ class VoteHandler(BaseHTTPRequestHandler):
 
             if self.path == '/votes':
                 votes = self.server.vote_db.read_vote()
+                self.send_response(200)
+                self._send_cors_headers()
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(votes).encode())
+            elif self.path == '/candidates':
+                votes = self.server.vote_db.read_candidates()
                 self.send_response(200)
                 self._send_cors_headers()
                 self.send_header('Content-Type', 'application/json')

@@ -8,10 +8,20 @@ from rich.progress import track
 
 console = Console()
 
-CANDIDATES = {
-    "pop_king": ["Justin Bieber", "Harry Styles", "The Weeknd", "Ed Sheeran"],
-    "pop_queen": ["Taylor Swift", "Ariana Grande", "Lady Gaga", "Beyoncé"]
-}
+async def get_candidates():
+    async with aiohttp.ClientSession() as session:
+        try:
+            async with session.get("http://localhost:8000/candidates") as response:
+                if response.status == 200:
+                    return await response.json()
+                else:
+                    console.log("[red]Failed to fetch candidates[/red]")
+                    return {}
+        except Exception as e:
+            console.log(f"[red]Error fetching candidates: {e}[/red]")
+            return {}
+
+CANDIDATES = get_candidates()
 
 async def submit_vote(session, url):
     try:
@@ -21,7 +31,12 @@ async def submit_vote(session, url):
         # Create random vote data
         data = {
             "pop_king": random.choice(CANDIDATES["pop_king"]),
-            "pop_queen": random.choice(CANDIDATES["pop_queen"])
+            "pop_queen": random.choice(CANDIDATES["pop_queen"]),
+            "most_attractive_dance": random.choice(CANDIDATES["most_attractive_dance"]),
+            "most_dazzaling_dance": random.choice(CANDIDATES["most_dazzling_dance"]),
+            "most_spirited_dance": random.choice(CANDIDATES["most_spirited_dance"]),
+            "meishi_grammy": random.choice(CANDIDATES["meishi_grammy"]),
+            "best_band": random.choice(CANDIDATES["best_band"])
         }
         
         headers = {
