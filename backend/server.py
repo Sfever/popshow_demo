@@ -34,13 +34,30 @@ class VoteDatabaseWorker():
         self.data_dir = os.path.dirname(os.path.abspath(__file__))
         self.data_file = os.path.join(self.data_dir, "vote_data.json")
         self.candidates_file = os.path.join(self.data_dir, "candidates.json")
+        self.allowance_file = os.path.join(self.data_dir, "allowance.json")
         self.save_queue = queue.Queue()
         self.save_thread = threading.Thread(target=self._save_worker, daemon=True)
         self.save_thread.start()
-        self._load_data()
         self.test_mode=True
         self.last_save_time = time.time()
         self.save_interval = 5  # Save at most once every 5 seconds
+        self.g6_allowed = []
+        self.g7_allowed = []
+        self.g8_allowed = []
+        self.g9_allowed = []
+        self.g10_allowed = []
+        self.g11_allowed = []
+        self.g12_allowed = []
+        self.teachers_allowed = []
+        self.g6_voted = []
+        self.g7_voted = []
+        self.g8_voted = []
+        self.g9_voted = []
+        self.g10_voted = []
+        self.g11_voted = []
+        self.g12_voted = []
+        self.teachers_voted = []
+        self._load_data()
 
     def _load_data(self):
         try:
@@ -76,6 +93,23 @@ class VoteDatabaseWorker():
                 console.log(f"[yellow]No existing candidates data found at {self.candidates_file}[/yellow]")
         except Exception as e:
             console.log(f"[yellow]Could not load candidates data: {e}[/yellow]")
+        try:
+            if os.path.exists(self.allowance_file):
+                with open(self.allowance_file, 'r', encoding='utf-8') as f:
+                    allowance = json.load(f)
+                    self.g6_allowed = allowance.get('g6', [])
+                    self.g7_allowed = allowance.get('g7', [])
+                    self.g8_allowed = allowance.get('g8', [])
+                    self.g9_allowed = allowance.get('g9', [])
+                    self.g10_allowed = allowance.get('g10', [])
+                    self.g11_allowed = allowance.get('g11', [])
+                    self.g12_allowed = allowance.get('g12', [])
+                    self.teachers_allowed = allowance.get('teachers', [])
+                    console.log(f"[green]Allowance data loaded from {self.allowance_file}[/green]")
+            else:
+                console.log(f"[yellow]No existing allowance data found at {self.allowance_file}[/yellow]")
+        except Exception as e:
+            console.log(f"[yellow]Could not load allowance data: {e}[/yellow]")
 
     def _save_data(self):
         if self.test_mode:
@@ -200,6 +234,37 @@ class VoteDatabaseWorker():
             "meishi_grammy": self.meishi_grammy_candidates.copy(),
             "best_band": self.best_band_candidates.copy()
         }
+    
+    def check_authorication(self, grade:int, name:str):
+        if self.test_mode:
+            return True
+        name = name.lower()
+        if grade == 6 and name in self.g6_allowed and name not in self.g6_voted:
+            self.g6_voted.append(name)
+            return True
+        elif grade == 7 and name in self.g7_allowed and name not in self.g7_voted:
+            self.g7_voted.append(name)
+            return True
+        elif grade == 8 and name in self.g8_allowed and name not in self.g8_voted:
+            self.g8_voted.append(name)
+            return True
+        elif grade == 9 and name in self.g9_allowed and name not in self.g9_voted:
+            self.g9_voted.append(name)
+            return True
+        elif grade == 10 and name in self.g10_allowed and name not in self.g10_voted:
+            self.g10_voted.append(name)
+            return True
+        elif grade == 11 and name in self.g11_allowed and name not in self.g11_voted:
+            self.g11_voted.append(name)
+            return True
+        elif grade == 12 and name in self.g12_allowed and name not in self.g12_voted:
+            self.g12_voted.append(name)
+            return True
+        elif grade == 13 and name in self.teachers_allowed and name not in self.teachers_voted:
+            self.teachers_voted.append(name)
+            return True
+
+
 
 class VotingServer(ThreadingHTTPServer):
     def __init__(self, server_address, handler_class):
@@ -278,7 +343,8 @@ class VoteHandler(BaseHTTPRequestHandler):
             content_length = int(self.headers.get('Content-Length', 0))
             post_data = self.rfile.read(content_length)
             data = json.loads(post_data.decode('utf-8'))
-
+            grade = data.get('grade')
+            name = data.get('name')
             device_token = self.headers.get('X-Device-Token')
             if not device_token:
                 self.send_response(400)
@@ -286,31 +352,42 @@ class VoteHandler(BaseHTTPRequestHandler):
                 self.send_header('Content-Type', 'application/json; charset=utf-8')
                 self.end_headers()
                 self.wfile.write(json.dumps({
-                   'success': False,
-                   'message': 'Missing device token'
+                    'success': False,
+                    'message': 'Missing device token'
                 }, ensure_ascii=False).encode('utf-8'))
                 return
-
+            if not self.server.vote_db.check_authorication(grade, name):
+                self.send_response(403)
+                self._send_cors_headers()
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    'success': False,
+                    'message': 'Not authorized to vote'
+                }, ensure_ascii=False).encode('utf-8'))
+                return
             success = self.server.vote_db.modify_vote(
-                data.get('pop_king'), 
-                data.get('pop_queen'),
-                data.get('most_spirited_dance'),
-                data.get('most_dazzling_dance'),
-                data.get('most_attractive_dance'),
-                data.get('meishi_grammy'),
-                data.get('best_band'),
-                self.client_address[0],
-                device_token
-            )
+                    data.get('pop_king'), 
+                    data.get('pop_queen'),
+                    data.get('most_spirited_dance'),
+                    data.get('most_dazzling_dance'),
+                    data.get('most_attractive_dance'),
+                    data.get('meishi_grammy'),
+                    data.get('best_band'),
+                    self.client_address[0],
+                    device_token
+                )
 
             self.send_response(200 if success else 403)
             self._send_cors_headers()
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.end_headers()
             self.wfile.write(json.dumps({
-                'success': success,
-                'message': 'Vote recorded' if success else 'Already voted or server shutting down'
+                    'success': success,
+                    'message': 'Vote recorded' if success else 'Already voted or server shutting down'
             }, ensure_ascii=False).encode('utf-8'))
+            
+
 
         except Exception as e:
             try:

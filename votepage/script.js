@@ -88,13 +88,14 @@ Object.entries(categories).forEach(([category, options]) => {
 // Handle vote submission
 async function submitVote() {
     try {
-        // Ensure at least one category has a selection
-        const hasSelection = Object.keys(categories).some(cat => {
+        // Ensure every category has a selection
+        const emptyCategories = Object.keys(categories).filter(cat => {
             const val = document.getElementById(`${cat}_select`).value;
-            return val;
+            return !val; // Return true for empty values
         });
-        if (!hasSelection) {
-            throw new Error('Please select at least one option');
+        
+        if (emptyCategories.length > 0) {
+            throw new Error(`Please select options for all categories`);
         }
 
         if (voteBtn.disabled) return;
@@ -104,8 +105,16 @@ async function submitVote() {
         const vote = {};
         Object.keys(categories).forEach(cat => {
             const val = document.getElementById(`${cat}_select`).value;
-            vote[cat] = val || null;
+            vote[cat] = val;
         });
+        vote.name=document.getElementById('name_input').value;
+        if (!vote.name) {
+            throw new Error('Please enter your name');
+        }
+        vote.grade=document.getElementById('grade_select').value;
+        if (!vote.grade) {
+            throw new Error('Please select your grade');
+        }
         const device_token = generateDeviceToken();
 
         const response = await fetch('http://localhost:8000/vote', {
