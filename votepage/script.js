@@ -106,13 +106,14 @@ async function submitVote() {
             const val = document.getElementById(`${cat}_select`).value;
             vote[cat] = val || null;
         });
-        vote.device_token = generateDeviceToken();
+        const device_token = generateDeviceToken();
 
         const response = await fetch('http://localhost:8000/vote', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-Device-Token': device_token
             },
             body: JSON.stringify(vote),
             mode: 'cors',

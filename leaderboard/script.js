@@ -172,5 +172,5 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAllRankingsOnline();
 });
 
-// Update every 5 seconds
-setInterval(updateAllRankingsOnline, 5000);
+// Update every second
+setInterval(updateAllRankingsOnline, 1000);

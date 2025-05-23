@@ -5,6 +5,8 @@ import uuid
 import random
 from rich.console import Console
 from rich.progress import track
+import time
+import random
 
 console = Console()
 
@@ -21,19 +23,20 @@ async def get_candidates():
             console.log(f"[red]Error fetching candidates: {e}[/red]")
             return {}
 
-CANDIDATES = get_candidates()
+
 
 async def submit_vote(session, url):
     try:
         # Generate unique device token for each vote
         device_token = str(uuid.uuid4())
-        
+        time.sleep(random.uniform(0.1, 0.5))  # Random delay to simulate real user behavior
+        CANDIDATES= await get_candidates()
         # Create random vote data
         data = {
             "pop_king": random.choice(CANDIDATES["pop_king"]),
             "pop_queen": random.choice(CANDIDATES["pop_queen"]),
             "most_attractive_dance": random.choice(CANDIDATES["most_attractive_dance"]),
-            "most_dazzaling_dance": random.choice(CANDIDATES["most_dazzling_dance"]),
+            "most_dazzling_dance": random.choice(CANDIDATES["most_dazzling_dance"]),
             "most_spirited_dance": random.choice(CANDIDATES["most_spirited_dance"]),
             "meishi_grammy": random.choice(CANDIDATES["meishi_grammy"]),
             "best_band": random.choice(CANDIDATES["best_band"])
@@ -43,7 +46,7 @@ async def submit_vote(session, url):
             "Content-Type": "application/json",
             "X-Device-Token": device_token
         }
-        
+        time.sleep(random.uniform(1, 2))  # Random delay to simulate real user behavior
         async with session.post(url, json=data, headers=headers) as response:
             return await response.json(), response.status
     except Exception as e:
@@ -60,7 +63,7 @@ async def stress_test():
     base_url = "http://localhost:8000"
     # Update the test parameters
     num_votes = 200  # Double the number of votes
-    concurrent_requests = 20  # Double concurrent requests
+    concurrent_requests = 2  # Double concurrent requests
     
     async with aiohttp.ClientSession() as session:
         # Test vote submission

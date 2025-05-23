@@ -39,7 +39,7 @@ class VoteDatabaseWorker():
     def _load_data(self):
         try:
             if os.path.exists(self.data_file):
-                with open(self.data_file, 'r') as f:
+                with open(self.data_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     self.pop_king = data.get('pop_king', {})
                     self.pop_queen = data.get('pop_queen', {})
@@ -56,13 +56,13 @@ class VoteDatabaseWorker():
             console.log(f"[yellow]Could not load vote data: {e}[/yellow]")
         try:
             if os.path.exists(self.candidates_file):
-                with open(self.candidates_file, 'r') as f:
+                with open(self.candidates_file, 'r', encoding='utf-8') as f:
                     candidates = json.load(f)
                     self.pop_king_candidates = candidates.get('pop_king', {})
                     self.pop_queen_candidates = candidates.get('pop_queen', {})
-                    self.most_spirited_dance_candidates = candidates.get('most_spirited_dance', {})
-                    self.most_dazzling_dance_candidates = candidates.get('most_dazzling_dance', {})
-                    self.most_attractive_dance_candidates = candidates.get('most_attractive_dance', {})
+                    self.most_spirited_dance_candidates = candidates.get('dance', {})
+                    self.most_dazzling_dance_candidates = candidates.get('dance', {})
+                    self.most_attractive_dance_candidates = candidates.get('dance', {})
                     self.meishi_grammy_candidates = candidates.get('meishi_grammy', {})
                     self.best_band_candidates = candidates.get('best_band', {})
                     console.log(f"[green]Candidates data loaded from {self.candidates_file}[/green]")
@@ -77,7 +77,7 @@ class VoteDatabaseWorker():
         try:
             # Write data to a temporary file first
             temp_file = self.data_file + '.tmp'
-            with open(temp_file, 'w') as f:
+            with open(temp_file, 'w', encoding='utf-8') as f:
                 json.dump({
                     'pop_king': self.pop_king,
                     'pop_queen': self.pop_queen,
@@ -87,7 +87,7 @@ class VoteDatabaseWorker():
                     'meishi_grammy': self.meishi_grammy,
                     'best_band': self.best_band,
                     'voted_devices': list(self.voted_devices)
-                }, f, indent=2)
+                }, f, ensure_ascii=False, indent=2)
             
             # Replace the old file with the new one
             if os.path.exists(self.data_file):
@@ -229,9 +229,12 @@ class VotingServer(HTTPServer):
 
     def serve_forever(self, poll_interval=0.5):
         console.log("[green]Server started and ready to accept connections[/green]")
+        self.socket.settimeout(poll_interval)
         while self._running:
             try:
                 self.handle_request()
+            except socket.timeout:
+                continue
             except Exception as e:
                 if self._running:
                     console.log(f"[red]Error handling request: {e}[/red]")
@@ -239,8 +242,8 @@ class VotingServer(HTTPServer):
 
 class VoteHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
-        self._send_cors_headers()
         self.send_response(204)
+        self._send_cors_headers()
         self.end_headers()
 
     def _send_cors_headers(self):
@@ -262,7 +265,14 @@ class VoteHandler(BaseHTTPRequestHandler):
 
             device_token = self.headers.get('X-Device-Token')
             if not device_token:
-                self.send_error(400, "Missing device token")
+                self.send_response(400)
+                self._send_cors_headers()
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                   'success': False,
+                   'message': 'Missing device token'
+                }, ensure_ascii=False).encode('utf-8'))
                 return
 
             success = self.server.vote_db.modify_vote(
@@ -279,16 +289,19 @@ class VoteHandler(BaseHTTPRequestHandler):
 
             self.send_response(200 if success else 403)
             self._send_cors_headers()
-            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.end_headers()
             self.wfile.write(json.dumps({
                 'success': success,
                 'message': 'Vote recorded' if success else 'Already voted or server shutting down'
-            }).encode())
+            }, ensure_ascii=False).encode('utf-8'))
 
         except Exception as e:
-            console.log(f"[red]Error in do_POST: {str(e)}[/red]")
-            self.send_error(500, "Internal Server Error")
+            try:
+                console.log(f"[red]Error in do_POST: {str(e)}[/red]")
+                self.send_error(500, "Internal Server Error")
+            except Exception as e:
+                pass
         finally:
             self.server.complete_request()
 
@@ -303,22 +316,24 @@ class VoteHandler(BaseHTTPRequestHandler):
                 votes = self.server.vote_db.read_vote()
                 self.send_response(200)
                 self._send_cors_headers()
-                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
                 self.end_headers()
-                self.wfile.write(json.dumps(votes).encode())
+                self.wfile.write(json.dumps(votes, ensure_ascii=False).encode('utf-8'))
             elif self.path == '/candidates':
                 votes = self.server.vote_db.read_candidates()
                 self.send_response(200)
                 self._send_cors_headers()
-                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Type', 'application/json; charset=utf-8')
                 self.end_headers()
-                self.wfile.write(json.dumps(votes).encode())
+                self.wfile.write(json.dumps(votes, ensure_ascii=False).encode('utf-8'))
             else:
                 self.send_error(404, "Not Found")
-
         except Exception as e:
-            console.log(f"[red]Error in do_GET: {str(e)}[/red]")
-            self.send_error(500, "Internal Server Error")
+            try:
+                console.log(f"[red]Error in do_GET: {str(e)}[/red]")
+                self.send_error(500, "Internal Server Error")
+            except Exception as e:
+                pass
         finally:
             self.server.complete_request()
 
