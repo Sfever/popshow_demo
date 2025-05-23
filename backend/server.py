@@ -2,12 +2,13 @@ import json
 import signal
 import socket
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import HTTPServer, BaseHTTPRequestHandler, ThreadingHTTPServer
 from rich.console import Console
 import ssl
 import sys
 import os
 import time
+import queue
 
 console = Console()
 
@@ -33,8 +34,13 @@ class VoteDatabaseWorker():
         self.data_dir = os.path.dirname(os.path.abspath(__file__))
         self.data_file = os.path.join(self.data_dir, "vote_data.json")
         self.candidates_file = os.path.join(self.data_dir, "candidates.json")
+        self.save_queue = queue.Queue()
+        self.save_thread = threading.Thread(target=self._save_worker, daemon=True)
+        self.save_thread.start()
         self._load_data()
         self.test_mode=True
+        self.last_save_time = time.time()
+        self.save_interval = 5  # Save at most once every 5 seconds
 
     def _load_data(self):
         try:
@@ -98,6 +104,16 @@ class VoteDatabaseWorker():
         except Exception as e:
             console.log(f"[red]Failed to save vote data: {e}[/red]")
 
+    def _save_worker(self):
+        while self.running:
+            try:
+                data = self.save_queue.get(timeout=1)
+                if time.time() - self.last_save_time >= self.save_interval:
+                    self._save_data()
+                    self.last_save_time = time.time()
+            except queue.Empty:
+                continue
+
     def check_if_voted(self, ip_address, device_token):
         vote_id = f"{ip_address}_{device_token}"
         return vote_id in self.voted_devices
@@ -105,7 +121,7 @@ class VoteDatabaseWorker():
     def record_vote(self, ip_address, device_token):
         vote_id = f"{ip_address}_{device_token}"
         self.voted_devices.add(vote_id)
-        self._save_data()  # Save after each vote
+        self.save_queue.put(True)  # Trigger asynchronous save
 
     def modify_vote(self, pop_king_vote=None, pop_queen_vote=None, most_spirited_dance_vote=None, most_dazzling_dance_vote=None, most_attractive_dance_vote=None, meishi_grammy_vote=None, best_band_vote=None, ip_address=None, device_token=None, bypass=False):
         if not self.running:
@@ -185,7 +201,7 @@ class VoteDatabaseWorker():
             "best_band": self.best_band_candidates.copy()
         }
 
-class VotingServer(HTTPServer):
+class VotingServer(ThreadingHTTPServer):
     def __init__(self, server_address, handler_class):
         super().__init__(server_address, handler_class)
         self.vote_db:VoteDatabaseWorker = VoteDatabaseWorker()

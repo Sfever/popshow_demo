@@ -141,13 +141,13 @@ async function getRankings() {
         console.error('Error fetching rankings:', error);
         // Fallback to mock data in case of error
         return {
-            pop_king: generateMockData(5),
-            pop_queen: generateMockData(5),
-            most_spirited_dance: generateMockData(5),
-            most_dazzling_dance: generateMockData(5),
-            most_attractive_dance: generateMockData(5),
-            meishi_grammy: generateMockData(5),
-            best_band: generateMockData(5)
+            pop_king: generateMockData(15),
+            pop_queen: generateMockData(15),
+            most_spirited_dance: generateMockData(15),
+            most_dazzling_dance: generateMockData(15),
+            most_attractive_dance: generateMockData(15),
+            meishi_grammy: generateMockData(15),
+            best_band: generateMockData(15)
         };
     }
 }
@@ -172,5 +172,5 @@ document.addEventListener('DOMContentLoaded', () => {
     updateAllRankingsOnline();
 });
 
-// Update every second
-setInterval(updateAllRankingsOnline, 1000);
+// Update every 3 second
+setInterval(updateAllRankingsOnline, 3000);
