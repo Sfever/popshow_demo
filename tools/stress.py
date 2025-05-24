@@ -18,7 +18,7 @@ async def get_candidates():
         
     async with aiohttp.ClientSession() as session:
         try:
-            async with session.get("http://localhost:8000/candidates") as response:
+            async with session.get("http://popshow.sfever.org/candidates") as response:
                 if response.status == 200:
                     CANDIDATES = await response.json()
                     return CANDIDATES
@@ -190,10 +190,10 @@ def generate_timing_report(timing_stats):
     return "\n".join(report)
 
 async def stress_test():
-    base_url = "http://localhost:8000"
+    base_url = "http://popshow.sfever.org"
     # Update the test parameters
-    num_votes = 20000  # Number of votes to simulate
-    concurrent_requests = 5000  # Concurrency level
+    num_votes = 2000  # Number of votes to simulate
+    concurrent_requests = 50  # Concurrency level
     use_api_per_request = True  # Whether to make an API call for candidates on each request
     
     # Get candidates once - will be used if use_api_per_request is False

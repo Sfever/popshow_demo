@@ -121,7 +121,7 @@ function updateRankingList(elementId, data) {
 
 async function getRankings() {
     try {
-        const response = await fetch('http://localhost:8000/votes');
+        const response = await fetch('http://popshow.sfever.org/votes');
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }

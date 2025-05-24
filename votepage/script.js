@@ -8,7 +8,7 @@
 // Define voting categories and their options
 async function fetchCandidates() {
     try {
-        const response = await fetch('http://localhost:8000/candidates', {
+        const response = await fetch('http://popshow.sfever.org/candidates', {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
@@ -117,7 +117,7 @@ async function submitVote() {
         }
         const device_token = generateDeviceToken();
 
-        const response = await fetch('http://localhost:8000/vote', {
+        const response = await fetch('http://popshow.sfever.org/vote', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
