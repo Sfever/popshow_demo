@@ -151,6 +151,7 @@ async function getRankings() {
         };
     }
 }
+const updateInterval=setInterval(updateAllRankingsOnline, 3000);
 
 // Function to update all rankings with online data
 async function updateAllRankingsOnline() {
@@ -164,6 +165,71 @@ async function updateAllRankingsOnline() {
     }
 }
 
+// ===== COUNTDOWN CONFIGURATION =====
+// Set your countdown timer here. Options:
+// 1. Use a specific end date and time
+const useSpecificEndTime = false;
+const endDateTime = "2025-05-31T18:00:00"; // Format: YYYY-MM-DDTHH:MM:SS
+
+// 2. Or use a countdown duration in hours, minutes, seconds
+const countdownDuration = {
+    hours: 0,
+    minutes: 2,
+    seconds: 0
+}; 
+// ===== END CONFIGURATION =====
+
+// Initialize the countdown timer
+function initializeCountdown() {
+    let targetTime;
+    
+    if (useSpecificEndTime) {
+        // Use the specific end date and time
+        targetTime = new Date(endDateTime).getTime();
+    } else {
+        // Calculate end time based on duration from now
+        const now = new Date().getTime();
+        const durationMs = (countdownDuration.hours * 60 * 60 * 1000) + 
+                           (countdownDuration.minutes * 60 * 1000) + 
+                           (countdownDuration.seconds * 1000);
+        targetTime = now + durationMs;
+    }
+    
+    const timerElement = document.getElementById("timer");
+    
+    // Update the countdown every second
+    function updateCountdown() {
+        const now = new Date().getTime();
+        const timeRemaining = targetTime - now;
+        
+        if (timeRemaining < 0) {
+            timerElement.textContent = "Voting Closed";
+            clearInterval(updateInterval);
+            return;
+        }
+        
+        // Calculate time components
+        const hours = Math.floor(timeRemaining / (1000 * 60 * 60));
+        const minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+        
+        // Format with leading zeros
+        const formattedHours = hours.toString().padStart(2, "0");
+        const formattedMinutes = minutes.toString().padStart(2, "0");
+        const formattedSeconds = seconds.toString().padStart(2, "0");
+        
+        // Update the display
+        timerElement.textContent = `${formattedHours}:${formattedMinutes}:${formattedSeconds}`;
+    }
+    
+    // Initial update and start interval
+    updateCountdown();
+    return setInterval(updateCountdown, 1000);
+}
+
+// Start the countdown when the page loads
+const countdownInterval = initializeCountdown();
+
 // Initialize rankings and start updates
 document.addEventListener('DOMContentLoaded', () => {
     // Start with mock data while loading real data
@@ -173,4 +239,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Update every 3 second
-setInterval(updateAllRankingsOnline, 3000);
